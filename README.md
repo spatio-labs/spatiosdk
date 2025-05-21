@@ -167,4 +167,4 @@ Use the compiled binary in production:
 ```bash
 export API_AUTH_TOKEN=your_token_here
 ./my_capability "search term"
-``` 
+``` # spatiosdk
