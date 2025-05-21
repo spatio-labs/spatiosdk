@@ -24,5 +24,5 @@ let package = Package(
             name: "SpatioSDKTests",
             dependencies: ["SpatioSDK"]),
     ],
-    swiftLanguageVersions: [.v5]
+    swiftLanguageModes: [.v5]
 )

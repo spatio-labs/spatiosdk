@@ -1,0 +1,16 @@
+{
+  "name": "SpatioSDK",
+  "version": "1.0.0",
+  "description": "Sample configuration file for testing",
+  "endpoints": {
+    "main": "https://api.spatio.com/v1",
+    "auth": "https://auth.spatio.com/v1",
+    "storage": "https://storage.spatio.com/v1"
+  },
+  "features": {
+    "auth": true,
+    "remote_capabilities": true,
+    "mock_data": true,
+    "logging": true
+  }
+} 

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Base class for remote capabilities interacting with APIs
-open class BaseRemoteCapability {
+open class BaseRemoteCapability: MockDataProvider {
     /// Organization identifier from capability.json
     public var organization: String = ""
     
@@ -20,6 +20,7 @@ open class BaseRemoteCapability {
         self.organization = organization
         self.group = group
         self.capability = capability
+        Logger.shared.debug("Initialized \(type(of: self)) with org: \(organization), group: \(group), capability: \(capability)")
     }
     
     /// Configure the API request for this capability
@@ -28,73 +29,76 @@ open class BaseRemoteCapability {
         fatalError("Subclasses must override configureRequest()")
     }
     
+    /// Provide mock data for testing
+    /// Override this method to provide custom mock data
+    open func provideMockData(for params: [String: String]) -> String {
+        Logger.shared.debug("Generating generic mock data for \(type(of: self))")
+        return MockHandler.shared.generateMockResponse(for: request, params: params)
+    }
+    
     /// Execute the capability with the provided parameters
     /// - Parameter params: Dictionary of parameter values
     /// - Returns: JSON response string
     public func execute(params: [String: String]) async throws -> String {
-        // Create URL with path parameters and query parameters
-        let url = try constructURL(from: request, with: params)
+        Logger.shared.info("Executing capability \(type(of: self))")
+        Logger.shared.debug("Parameters: \(params)")
         
-        // Create URL request with appropriate method
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = request.method
-        
-        // Add content-type for all requests
-        urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        // Add authorization if configured
-        try addAuthentication(to: &urlRequest, with: params)
-        
-        // Add body parameters if applicable
-        if request.method != "GET" {
-            let bodyParams = request.parameters.filter { $0.location == .body }
-            if !bodyParams.isEmpty {
-                var bodyData: [String: Any] = [:]
-                for param in bodyParams {
-                    if let value = params[param.name] {
-                        bodyData[param.name] = value
-                    }
-                }
-                if !bodyData.isEmpty {
-                    urlRequest.httpBody = try JSONSerialization.data(withJSONObject: bodyData)
-                }
-            }
+        // Check if mock mode is enabled
+        if let mockData = MockHandler.shared.getMockData(for: self, params: params) {
+            Logger.shared.info("Using mock data for \(type(of: self))")
+            return mockData
         }
         
-        // Make the API request
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        // Get actual API data
+        Logger.shared.info("Executing live API request for \(type(of: self))")
+        return try await executeAPIRequest(with: params)
+    }
+    
+    /// Execute the actual API request
+    /// - Parameter params: Dictionary of parameter values
+    /// - Returns: JSON response string
+    private func executeAPIRequest(with params: [String: String]) async throws -> String {
+        Logger.shared.debug("Making API request to \(request.baseURL)\(request.endpoint)")
         
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            let errorResponse = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw NSError(domain: "APIRequest", code: (response as? HTTPURLResponse)?.statusCode ?? 500,
-                         userInfo: [NSLocalizedDescriptionKey: errorResponse])
-        }
+        let data = try await APIClient.shared.execute(
+            request: request,
+            params: params,
+            organization: organization,
+            group: group,
+            capability: capability
+        )
         
-        return String(data: data, encoding: .utf8) ?? "{}"
+        let responseString = String(data: data, encoding: .utf8) ?? "{}"
+        Logger.shared.debug("Received API response with \(data.count) bytes")
+        return responseString
     }
     
     /// Adds authentication to the request based on configuration
     private func addAuthentication(to request: inout URLRequest, with params: [String: String]) throws {
         if !organization.isEmpty && !group.isEmpty && !capability.isEmpty {
             // Use the AuthManager to get configured authentication
+            Logger.shared.debug("Getting auth token for \(organization)/\(group)/\(capability)")
             let auth = try AuthManager.shared.getAuthToken(for: organization, group: group, capability: capability)
             
             switch auth.location {
             case .header:
                 request.addValue(auth.value, forHTTPHeaderField: auth.name)
+                Logger.shared.debug("Added auth header: \(auth.name)")
             case .query:
                 // Query parameters are handled during URL construction
-                // This is for reference only as auth should already be in params
+                Logger.shared.debug("Auth will be added as query parameter: \(auth.name)")
                 break
             case .body:
                 // Body parameters would be added with other body params
-                // This is for reference only as auth should already be in params
+                Logger.shared.debug("Auth will be added to request body: \(auth.name)")
                 break
             }
         } else if let authToken = params["auth_token"] {
             // Fallback to simple auth token from params if identifiers not set
             request.addValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+            Logger.shared.debug("Using fallback auth token from params")
+        } else {
+            Logger.shared.debug("No authentication configured")
         }
     }
     
@@ -107,6 +111,7 @@ open class BaseRemoteCapability {
         for param in pathParams {
             if let value = params[param.name] ?? param.defaultValue {
                 endpoint = endpoint.replacingOccurrences(of: "{\(param.name)}", with: value)
+                Logger.shared.debug("Replaced path parameter \(param.name) with \(value)")
             }
         }
         
@@ -121,6 +126,7 @@ open class BaseRemoteCapability {
             for param in queryParams {
                 if let value = params[param.name] ?? param.defaultValue {
                     queryItems.append(URLQueryItem(name: param.name, value: value))
+                    Logger.shared.debug("Added query parameter \(param.name)=\(value)")
                 }
             }
             
@@ -131,6 +137,9 @@ open class BaseRemoteCapability {
                     if let token = ProcessInfo.processInfo.environment[config.envVariable] {
                         let authValue = config.valuePrefix != nil ? "\(config.valuePrefix!)\(token)" : token
                         queryItems.append(URLQueryItem(name: config.parameterName, value: authValue))
+                        Logger.shared.debug("Added auth query parameter \(config.parameterName)")
+                    } else {
+                        Logger.shared.warning("Auth token not found in environment variable \(config.envVariable)")
                     }
                 }
             }
@@ -141,9 +150,11 @@ open class BaseRemoteCapability {
         }
         
         guard let url = urlComponents?.url else {
+            Logger.shared.error("Invalid URL components for \(request.baseURL + endpoint)")
             throw NSError(domain: "APIRequest", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid URL components"])
         }
         
+        Logger.shared.debug("Constructed URL: \(url.absoluteString)")
         return url
     }
 } 
