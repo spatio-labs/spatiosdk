@@ -19,14 +19,14 @@ public class APIClient {
     ///   - request: The API request configuration
     ///   - params: Dictionary of parameter names and values
     ///   - organization: Organization identifier for authentication
-    ///   - group: Group identifier for authentication
+    ///   - parentOrganization: Parent organization identifier for authentication
     ///   - capability: Capability identifier for authentication
     /// - Returns: The response data from the API
     public func execute(
         request: APIRequest,
         params: [String: String],
         organization: String,
-        group: String,
+        parentOrganization: String,
         capability: String
     ) async throws -> Data {
         Logger.shared.info("Executing API request: \(request.method) \(request.baseURL)\(request.endpoint)")
@@ -109,7 +109,7 @@ public class APIClient {
         
         // Add authentication
         do {
-            let authToken = try AuthManager.shared.getAuthToken(for: organization, group: group, capability: capability)
+            let authToken = try AuthManager.shared.getAuthToken(for: organization, parentOrganization: parentOrganization, capability: capability)
             
             switch authToken.location {
             case .header:
@@ -205,5 +205,22 @@ public class APIClient {
         }
         
         return result
+    }
+    
+    // For backward compatibility
+    public func execute(
+        request: APIRequest,
+        params: [String: String],
+        organization: String,
+        group: String,
+        capability: String
+    ) async throws -> Data {
+        return try await execute(
+            request: request,
+            params: params,
+            organization: group.isEmpty ? organization : group,
+            parentOrganization: group.isEmpty ? "" : organization,
+            capability: capability
+        )
     }
 } 

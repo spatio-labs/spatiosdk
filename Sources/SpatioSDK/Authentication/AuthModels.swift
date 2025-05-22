@@ -32,18 +32,23 @@ public struct AuthConfig: Codable {
     /// Environment variable name used to retrieve the auth value
     public let envVariable: String
     
+    /// OAuth scopes (optional)
+    public let scopes: [String]?
+    
     public init(
         type: AuthType,
         parameterName: String,
         location: AuthLocation,
         valuePrefix: String? = nil,
-        envVariable: String
+        envVariable: String,
+        scopes: [String]? = nil
     ) {
         self.type = type
         self.parameterName = parameterName
         self.location = location
         self.valuePrefix = valuePrefix
         self.envVariable = envVariable
+        self.scopes = scopes
     }
 }
 
@@ -55,11 +60,14 @@ public class AuthManager {
     /// Organization-level auth configurations
     private var orgConfigs: [String: AuthConfig] = [:]
     
-    /// Group-level auth configurations
-    private var groupConfigs: [String: [String: AuthConfig]] = [:]
+    /// Child organization auth configurations
+    private var childOrgConfigs: [String: [String: AuthConfig]] = [:]
     
     /// Capability-level auth configurations
-    private var capabilityConfigs: [String: [String: [String: AuthConfig]]] = [:]
+    private var capabilityConfigs: [String: [String: AuthConfig]] = [:]
+    
+    /// Parent-child organization relationships
+    private var orgRelationships: [String: String] = [:]
     
     private init() {}
     
@@ -68,45 +76,72 @@ public class AuthManager {
         orgConfigs[organization] = config
     }
     
-    /// Set authentication configuration at the group level
-    public func setAuthConfig(for organization: String, group: String, config: AuthConfig) {
-        if groupConfigs[organization] == nil {
-            groupConfigs[organization] = [:]
+    /// Set authentication configuration for a child organization
+    public func setAuthConfig(for childOrg: String, parentOrganization: String, config: AuthConfig) {
+        // Store the parent-child relationship
+        orgRelationships[childOrg] = parentOrganization
+        
+        if childOrgConfigs[parentOrganization] == nil {
+            childOrgConfigs[parentOrganization] = [:]
         }
-        groupConfigs[organization]?[group] = config
+        childOrgConfigs[parentOrganization]?[childOrg] = config
     }
     
     /// Set authentication configuration at the capability level
-    public func setAuthConfig(for organization: String, group: String, capability: String, config: AuthConfig) {
+    public func setAuthConfig(for organization: String, capability: String, config: AuthConfig) {
         if capabilityConfigs[organization] == nil {
             capabilityConfigs[organization] = [:]
         }
-        if capabilityConfigs[organization]?[group] == nil {
-            capabilityConfigs[organization]?[group] = [:]
-        }
-        capabilityConfigs[organization]?[group]?[capability] = config
+        capabilityConfigs[organization]?[capability] = config
     }
     
     /// Get the most specific auth configuration for a capability
-    public func getAuthConfig(for organization: String, group: String, capability: String) -> AuthConfig? {
+    public func getAuthConfig(for organization: String, parentOrganization: String = "", capability: String) -> AuthConfig? {
         // Check capability-level config
-        if let capConfig = capabilityConfigs[organization]?[group]?[capability] {
+        if let capConfig = capabilityConfigs[organization]?[capability] {
             return capConfig
         }
         
-        // Check group-level config
-        if let groupConfig = groupConfigs[organization]?[group] {
-            return groupConfig
+        // Check organization-level config
+        if let orgConfig = orgConfigs[organization] {
+            return orgConfig
         }
         
-        // Check organization-level config
-        return orgConfigs[organization]
+        // Check parent organization config if available
+        if !parentOrganization.isEmpty {
+            if let parentConfig = childOrgConfigs[parentOrganization]?[organization] {
+                return parentConfig
+            }
+            
+            // Try parent's organization config
+            return orgConfigs[parentOrganization]
+        }
+        
+        // Check if this organization has a parent we know about
+        if let parent = orgRelationships[organization] {
+            if let parentChildConfig = childOrgConfigs[parent]?[organization] {
+                return parentChildConfig
+            }
+            
+            // Try parent's organization config
+            return orgConfigs[parent]
+        }
+        
+        return nil
+    }
+    
+    /// For backward compatibility
+    public func getAuthConfig(for organization: String, group: String, capability: String) -> AuthConfig? {
+        return getAuthConfig(for: group.isEmpty ? organization : group, 
+                            parentOrganization: group.isEmpty ? "" : organization, 
+                            capability: capability)
     }
     
     /// Gets auth token using the appropriate configuration
-    public func getAuthToken(for organization: String, group: String, capability: String) throws -> (name: String, value: String, location: AuthLocation) {
-        guard let config = getAuthConfig(for: organization, group: group, capability: capability) else {
-            throw NSError(domain: "AuthManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "No authentication configuration found"])
+    public func getAuthToken(for organization: String, parentOrganization: String = "", capability: String) throws -> (name: String, value: String, location: AuthLocation) {
+        guard let config = getAuthConfig(for: organization, parentOrganization: parentOrganization, capability: capability) else {
+            let orgPath = parentOrganization.isEmpty ? organization : "\(parentOrganization)/\(organization)"
+            throw NSError(domain: "AuthManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "No authentication configuration found for \(orgPath)/\(capability)"])
         }
         
         guard let token = ProcessInfo.processInfo.environment[config.envVariable] else {
@@ -116,5 +151,12 @@ public class AuthManager {
         let authValue = config.valuePrefix != nil ? "\(config.valuePrefix!)\(token)" : token
         
         return (name: config.parameterName, value: authValue, location: config.location)
+    }
+    
+    /// For backward compatibility
+    public func getAuthToken(for organization: String, group: String, capability: String) throws -> (name: String, value: String, location: AuthLocation) {
+        return try getAuthToken(for: group.isEmpty ? organization : group, 
+                              parentOrganization: group.isEmpty ? "" : organization, 
+                              capability: capability)
     }
 } 

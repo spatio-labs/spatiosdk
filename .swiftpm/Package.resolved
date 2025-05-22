@@ -3,7 +3,7 @@
     {
       "identity" : "spatiosdk",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/yourusername/SpatioSDK.git",
+      "location" : "https://github.com/spatio-labs/spatiosdk.git",
       "state" : {
         "revision" : "1234567890abcdef1234567890abcdef12345678",
         "version" : "1.0.0"

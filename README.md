@@ -1,7 +1,7 @@
 # SpatioSDK
 
 [![Swift](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/yourusername/SpatioSDK)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/spatio-labs/spatiosdk)
 
 A Swift package for building capabilities for Spatio, with support for local and remote API integrations.
 
@@ -21,7 +21,7 @@ SpatioSDK provides the core models and utilities needed for creating capabilitie
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/yourusername/SpatioSDK.git", .upToNextMajor(from: "1.0.0"))
+    .package(url: "https://github.com/spatio-labs/spatiosdk.git", .upToNextMajor(from: "1.0.0"))
 ]
 ```
 
@@ -29,7 +29,7 @@ dependencies: [
 
 ```swift
 #!/usr/bin/env swift sh
-import SpatioSDK // @YourGitHubUsername ~> 1.0.0
+import SpatioSDK // @spatio-labs ~> 1.0.0
 ```
 
 ## Getting Started
@@ -99,7 +99,7 @@ AuthManager.shared.setAuthConfig(for: "google", group: "maps", config: apiKeyCon
 
 ```swift
 #!/usr/bin/env swift sh
-import SpatioSDK // @YourGitHubUsername ~> 1.0.0
+import SpatioSDK // @spatio-labs ~> 1.0.0
 import Foundation
 
 // Configure authentication
@@ -174,63 +174,4 @@ struct MyCapabilityScript {
 
 2. Make the script executable:
 
-```bash
-chmod +x my_capability.swift
 ```
-
-3. Compile the script into a binary:
-
-```bash
-swift sh my_capability.swift --compile -o my_capability
-```
-
-## Testing with Mock Data
-
-SpatioSDK includes built-in support for mock data to facilitate testing:
-
-```swift
-// Enable mock data globally
-let config = SpatioConfig(useMockData: true)
-SpatioSDK.shared.configure(with: config)
-
-// Create and execute your capability
-let capability = MyApiCapability()
-let result = try await capability.execute(params: ["query": "test"])
-print(result) // Will return mock data
-```
-
-## Command Line Utilities
-
-The SDK includes utilities for parsing command line arguments:
-
-```swift
-// Define the parameters your capability expects
-let parameters = [
-    APIParameter(name: "query", type: "string", required: true),
-    APIParameter(name: "limit", type: "integer", defaultValue: "10")
-]
-
-// Parse command line arguments into a parameter dictionary
-let params = CommandLineUtils.parseArguments(for: parameters)
-```
-
-## Running Examples
-
-Run the script directly during development:
-
-```bash
-export API_AUTH_TOKEN=your_token_here
-./my_capability.swift "search term"
-```
-
-Use the compiled binary in production:
-
-```bash
-export API_AUTH_TOKEN=your_token_here
-./my_capability "search term"
-```
-
-## Requirements
-
-- Swift 6.0+
-- macOS 10.15+, iOS 13+, tvOS 13+, watchOS 6+, macCatalyst 13+

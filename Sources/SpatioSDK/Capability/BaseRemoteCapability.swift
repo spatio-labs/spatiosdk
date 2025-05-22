@@ -5,8 +5,8 @@ open class BaseRemoteCapability: MockDataProvider {
     /// Organization identifier from capability.json
     public var organization: String = ""
     
-    /// Group identifier from capability.json
-    public var group: String = ""
+    /// Parent organization identifier (optional)
+    public var parentOrganization: String = ""
     
     /// Capability identifier from capability.json
     public var capability: String = ""
@@ -16,11 +16,18 @@ open class BaseRemoteCapability: MockDataProvider {
         return configureRequest()
     }
     
-    public init(organization: String = "", group: String = "", capability: String = "") {
+    public init(organization: String = "", parentOrganization: String = "", capability: String = "") {
         self.organization = organization
-        self.group = group
+        self.parentOrganization = parentOrganization
         self.capability = capability
-        Logger.shared.debug("Initialized \(type(of: self)) with org: \(organization), group: \(group), capability: \(capability)")
+        Logger.shared.debug("Initialized \(type(of: self)) with org: \(organization), parent: \(parentOrganization), capability: \(capability)")
+    }
+    
+    // For backward compatibility
+    public convenience init(organization: String = "", group: String = "", capability: String = "") {
+        self.init(organization: group.isEmpty ? organization : group, 
+                 parentOrganization: group.isEmpty ? "" : organization, 
+                 capability: capability)
     }
     
     /// Configure the API request for this capability
@@ -64,7 +71,7 @@ open class BaseRemoteCapability: MockDataProvider {
             request: request,
             params: params,
             organization: organization,
-            group: group,
+            parentOrganization: parentOrganization,
             capability: capability
         )
         
@@ -75,10 +82,16 @@ open class BaseRemoteCapability: MockDataProvider {
     
     /// Adds authentication to the request based on configuration
     private func addAuthentication(to request: inout URLRequest, with params: [String: String]) throws {
-        if !organization.isEmpty && !group.isEmpty && !capability.isEmpty {
+        if !organization.isEmpty && !capability.isEmpty {
             // Use the AuthManager to get configured authentication
-            Logger.shared.debug("Getting auth token for \(organization)/\(group)/\(capability)")
-            let auth = try AuthManager.shared.getAuthToken(for: organization, group: group, capability: capability)
+            let orgPath = parentOrganization.isEmpty ? organization : "\(parentOrganization)/\(organization)"
+            Logger.shared.debug("Getting auth token for \(orgPath)/\(capability)")
+            
+            let auth = try AuthManager.shared.getAuthToken(
+                for: organization,
+                parentOrganization: parentOrganization,
+                capability: capability
+            )
             
             switch auth.location {
             case .header:
@@ -131,9 +144,13 @@ open class BaseRemoteCapability: MockDataProvider {
             }
             
             // Add auth query parameter if configured
-            if !organization.isEmpty && !group.isEmpty && !capability.isEmpty {
-                if let config = AuthManager.shared.getAuthConfig(for: organization, group: group, capability: capability),
-                   config.location == .query {
+            if !organization.isEmpty && !capability.isEmpty {
+                if let config = AuthManager.shared.getAuthConfig(
+                    for: organization,
+                    parentOrganization: parentOrganization,
+                    capability: capability
+                ),
+                config.location == .query {
                     if let token = ProcessInfo.processInfo.environment[config.envVariable] {
                         let authValue = config.valuePrefix != nil ? "\(config.valuePrefix!)\(token)" : token
                         queryItems.append(URLQueryItem(name: config.parameterName, value: authValue))
