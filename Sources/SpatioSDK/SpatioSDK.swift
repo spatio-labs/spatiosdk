@@ -30,6 +30,14 @@ public struct SpatioSDK {
     public func reset() {
         SpatioConfig.current = SpatioConfig.default
     }
+    
+    /// Access to the capability generator for creating organizations and capabilities
+    /// - Parameter mode: The persistence mode to use
+    /// - Returns: CapabilityGenerator instance
+    /// - Throws: PersistenceError if the mode is invalid
+    public func capabilityGenerator(mode: PersistenceMode) throws -> CapabilityGenerator {
+        return try CapabilityGenerator(mode: mode)
+    }
 }
 
 /// Configuration for the SpatioSDK.
