@@ -6,8 +6,8 @@ public class DarwinCoreToolsGenerator {
     
     private let capabilityGenerator: CapabilityGenerator
     
-    public init(capabilitiesStorePath: String) {
-        self.capabilityGenerator = CapabilityGenerator(capabilitiesStorePath: capabilitiesStorePath)
+    public init(mode: PersistenceMode) throws {
+        self.capabilityGenerator = try CapabilityGenerator(mode: mode)
     }
     
     /// Generate all Darwin AI core tools
