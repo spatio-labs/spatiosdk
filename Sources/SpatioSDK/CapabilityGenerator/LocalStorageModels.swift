@@ -19,6 +19,7 @@ public struct LocalOrganizationData: Codable, Identifiable {
     public let createdAt: Int64
     public let updatedAt: Int64
     public let metadataJson: String?
+    public let tags: String?
     
     public init(
         id: String,
@@ -29,7 +30,8 @@ public struct LocalOrganizationData: Codable, Identifiable {
         isLocalOnly: Bool = false,
         createdAt: Int64 = Int64(Date().timeIntervalSince1970),
         updatedAt: Int64 = Int64(Date().timeIntervalSince1970),
-        metadataJson: String? = nil
+        metadataJson: String? = nil,
+        tags: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -40,6 +42,7 @@ public struct LocalOrganizationData: Codable, Identifiable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.metadataJson = metadataJson
+        self.tags = tags
     }
 }
 
@@ -251,7 +254,8 @@ extension DarwinOrganizationData {
             logoUrl: logo ?? pngLogo ?? svgLogo,
             isInstalled: isInstalled,
             isLocalOnly: isLocalOnly,
-            metadataJson: try? String(data: JSONEncoder().encode(self), encoding: .utf8)
+            metadataJson: try? String(data: JSONEncoder().encode(self), encoding: .utf8),
+            tags: tags?.joined(separator: ",")
         )
     }
 }
