@@ -78,6 +78,7 @@ public enum PersistenceError: Error, LocalizedError {
     case databaseError(String)
     case validationError(String)
     case permissionDenied(String)
+    case operationNotSupported(String)
     
     public var errorDescription: String? {
         switch self {
@@ -99,6 +100,8 @@ public enum PersistenceError: Error, LocalizedError {
             return "Validation error: \(details)"
         case .permissionDenied(let details):
             return "Permission denied: \(details)"
+        case .operationNotSupported(let details):
+            return "Operation not supported: \(details)"
         }
     }
 }
@@ -126,9 +129,9 @@ public struct PersistenceLayerFactory {
         
         switch mode {
         case .local:
-            return LocalPersistenceLayer()
+            return try LocalPersistenceLayer()
         case .remote(let path):
-            return RemotePersistenceLayer(capabilitiesStorePath: path)
+            return try RemotePersistenceLayer(capabilitiesStorePath: path)
         }
     }
 }
