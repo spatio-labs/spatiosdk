@@ -25,6 +25,9 @@ public class RemotePersistenceLayer: PersistenceLayer {
     // MARK: - Cache Manager
     private var cacheManager: CapabilityCacheManager!
     
+    // MARK: - License Key
+    private var licenseKey: String?
+    
     // MARK: - Performance Metrics
     private var totalQueries = 0
     private var averageQueryTime: TimeInterval = 0
@@ -231,6 +234,14 @@ public class RemotePersistenceLayer: PersistenceLayer {
         return try cacheManager.loadMetadataCache()
     }
     
+    // MARK: - License Key Management
+    
+    /// Set the license key for API authentication
+    public func setLicenseKey(_ key: String) {
+        self.licenseKey = key
+        Logger.shared.info("RemotePersistenceLayer: License key set")
+    }
+    
     // MARK: - Database Management
     
     /// Download and connect to the SQLite database
@@ -270,7 +281,7 @@ public class RemotePersistenceLayer: PersistenceLayer {
         Logger.shared.info("Downloading SQLite database via download-changes API...")
         
         // Use the download-changes API endpoint
-        guard let url = URL(string: "https://spatiolabs.org/api/capabilities/download-changes") else {
+        guard let url = URL(string: "https://www.spatiolabs.org/api/capabilities/download-changes") else {
             throw PersistenceError.databaseError("Invalid URL")
         }
         
@@ -282,8 +293,13 @@ public class RemotePersistenceLayer: PersistenceLayer {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Add license key if available (this would need to be injected)
-        // request.setValue(licenseKey, forHTTPHeaderField: "x-license-key")
+        // Add license key if available
+        if let licenseKey = self.licenseKey {
+            request.setValue(licenseKey, forHTTPHeaderField: "x-license-key")
+            Logger.shared.info("Added license key to download-changes request")
+        } else {
+            Logger.shared.warning("No license key available for download-changes request")
+        }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         
