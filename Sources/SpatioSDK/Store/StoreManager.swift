@@ -231,8 +231,8 @@ public class StoreManager {
         // Get sub-organizations
         var subOrganizations: [StoreOrganization] = []
         for childId in childrenArray {
-            if let childQuery = orgTable.filter(orgId == childId),
-               let childRow = try db.pluck(childQuery) {
+            let childQuery = orgTable.filter(orgId == childId)
+            if let childRow = try db.pluck(childQuery) {
                 
                 let childLogoUrl = childRow[orgLogo]
                 let childPngLogo = childLogoUrl?.contains(".png") == true ? childLogoUrl : nil
