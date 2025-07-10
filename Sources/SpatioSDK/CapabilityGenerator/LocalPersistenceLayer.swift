@@ -30,7 +30,7 @@ public class LocalPersistenceLayer: PersistenceLayer {
     private let databasePath: URL
     
     /// Cache manager for fast capability loading
-    private let cacheManager: CapabilityCacheManager
+    private var cacheManager: CapabilityCacheManager!
     
     /// JSON encoder for metadata
     private let jsonEncoder = JSONEncoder()

@@ -98,7 +98,7 @@ public class CapabilityCacheManager {
                     name: org.name,
                     description: org.description,
                     logoUrl: org.logo,
-                    isLocalOnly: org.types?.contains("local") == true,
+                    isLocalOnly: org.types.contains("local"),
                     capabilityCount: getCapabilityCount(for: org.id)
                 )
             }
@@ -128,7 +128,7 @@ public class CapabilityCacheManager {
                     name: org.name,
                     description: org.description,
                     logoUrl: org.logo,
-                    isLocalOnly: org.types?.contains("local") == true,
+                    isLocalOnly: org.types.contains("local"),
                     capabilityCount: getCapabilityCount(for: org.id)
                 )
             },

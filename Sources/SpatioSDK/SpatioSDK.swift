@@ -38,6 +38,7 @@ public struct SpatioSDK {
     public func capabilityGenerator(mode: PersistenceMode) throws -> CapabilityGenerator {
         return try CapabilityGenerator(mode: mode)
     }
+    
 }
 
 /// Configuration for the SpatioSDK.

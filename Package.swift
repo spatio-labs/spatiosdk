@@ -12,12 +12,17 @@ let package = Package(
             name: "SpatioSDK",
             targets: ["SpatioSDK"]),
     ],
-    dependencies: [],
+    dependencies: [
+        .package(url: "https://github.com/stephencelis/SQLite.swift.git", exact: "0.15.4")
+    ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
             name: "SpatioSDK",
+            dependencies: [
+                .product(name: "SQLite", package: "SQLite.swift")
+            ],
             path: "Sources/SpatioSDK",
             resources: [.process("Resources")]),
         .testTarget(

@@ -23,7 +23,7 @@ public class RemotePersistenceLayer: PersistenceLayer {
     private let capabilitiesStorePath: String
     
     // MARK: - Cache Manager
-    private let cacheManager: CapabilityCacheManager
+    private var cacheManager: CapabilityCacheManager!
     
     // MARK: - Performance Metrics
     private var totalQueries = 0
@@ -35,7 +35,7 @@ public class RemotePersistenceLayer: PersistenceLayer {
     
     public init(capabilitiesStorePath: String) throws {
         self.capabilitiesStorePath = capabilitiesStorePath
-        self.mode = .remote(path: capabilitiesStorePath)
+        self.mode = .remote(capabilitiesStorePath: capabilitiesStorePath)
         
         // Set up cache directory
         let cacheDir = URL(fileURLWithPath: capabilitiesStorePath).appendingPathComponent("cache")
@@ -61,6 +61,35 @@ public class RemotePersistenceLayer: PersistenceLayer {
         overwrite: Bool
     ) throws {
         throw PersistenceError.operationNotSupported("Remote persistence layer is read-only")
+    }
+    
+    /// List featured organizations
+    public func listFeaturedOrganizations() throws -> [DarwinOrganizationData] {
+        return try withConnection { db in
+            let sql = """
+                SELECT o.id, o.name, o.description, o.logo, o.path, o.url, o.parent_id, o.children, o.tags, o.created_at
+                FROM organizations o
+                JOIN featured f ON o.id = f.organization_id
+                ORDER BY f.display_order ASC
+            """
+            
+            let organizations = try executeQuery(sql: sql, parameters: []) { stmt in
+                return RemoteOrganization(
+                    id: String(cString: sqlite3_column_text(stmt, 0)),
+                    name: String(cString: sqlite3_column_text(stmt, 1)),
+                    description: String(cString: sqlite3_column_text(stmt, 2)),
+                    logo: sqlite3_column_text(stmt, 3) != nil ? String(cString: sqlite3_column_text(stmt, 3)) : nil,
+                    path: String(cString: sqlite3_column_text(stmt, 4)),
+                    url: String(cString: sqlite3_column_text(stmt, 5)),
+                    parentId: sqlite3_column_text(stmt, 6) != nil ? String(cString: sqlite3_column_text(stmt, 6)) : nil,
+                    children: parseJSONArray(UnsafeRawPointer(sqlite3_column_text(stmt, 7))?.assumingMemoryBound(to: CChar.self)),
+                    tags: parseJSONArray(UnsafeRawPointer(sqlite3_column_text(stmt, 8))?.assumingMemoryBound(to: CChar.self)),
+                    createdAt: Date(timeIntervalSince1970: TimeInterval(sqlite3_column_int64(stmt, 9)))
+                )
+            }
+            
+            return organizations.map { $0.toDarwinOrganizationData() }
+        }
     }
     
     public func listOrganizations() throws -> [DarwinOrganizationData] {
