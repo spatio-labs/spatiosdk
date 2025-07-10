@@ -94,7 +94,7 @@ public class SpatioSDKManager {
     /// - Returns: Success/failure result
     public func uninstallCapability(name: String, organization: String) -> Result<Void, SpatioSDKError> {
         do {
-            try persistenceLayer.removeCapability(capabilityName: name, organizationId: organization)
+            try persistenceLayer.removeCapability(capabilityName: name, from: organization)
             Logger.shared.info("Successfully uninstalled capability: \(name)")
             return .success(())
         } catch {
@@ -199,26 +199,38 @@ public class SpatioSDKManager {
     /// Refresh capability cache (if applicable)
     /// - Returns: Success/failure result
     public func refreshCapabilityCache() -> Result<Void, SpatioSDKError> {
-        do {
-            try persistenceLayer.refreshAllCaches()
-            Logger.shared.info("Successfully refreshed capability cache")
+        // Cache operations are specific to LocalPersistenceLayer
+        if let localLayer = persistenceLayer as? LocalPersistenceLayer {
+            do {
+                try localLayer.refreshCaches()
+                Logger.shared.info("Successfully refreshed capability cache")
+                return .success(())
+            } catch {
+                Logger.shared.error("Failed to refresh capability cache: \(error)")
+                return .failure(.persistenceError(error.localizedDescription))
+            }
+        } else {
+            Logger.shared.info("Cache refresh not supported for current persistence layer")
             return .success(())
-        } catch {
-            Logger.shared.error("Failed to refresh capability cache: \(error)")
-            return .failure(.persistenceError(error.localizedDescription))
         }
     }
     
     /// Clear capability cache (if applicable)
     /// - Returns: Success/failure result
     public func clearCapabilityCache() -> Result<Void, SpatioSDKError> {
-        do {
-            try persistenceLayer.clearAllCaches()
-            Logger.shared.info("Successfully cleared capability cache")
+        // Cache operations are specific to LocalPersistenceLayer
+        if let localLayer = persistenceLayer as? LocalPersistenceLayer {
+            do {
+                try localLayer.clearCaches()
+                Logger.shared.info("Successfully cleared capability cache")
+                return .success(())
+            } catch {
+                Logger.shared.error("Failed to clear capability cache: \(error)")
+                return .failure(.persistenceError(error.localizedDescription))
+            }
+        } else {
+            Logger.shared.info("Cache clear not supported for current persistence layer")
             return .success(())
-        } catch {
-            Logger.shared.error("Failed to clear capability cache: \(error)")
-            return .failure(.persistenceError(error.localizedDescription))
         }
     }
 }
