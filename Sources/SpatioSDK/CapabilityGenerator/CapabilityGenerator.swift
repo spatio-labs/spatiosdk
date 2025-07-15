@@ -213,7 +213,6 @@ public class CapabilityGenerator {
             description: capJson.description,
             entry_point: capJson.entry_point ?? "",
             organization: capJson.organization,
-            group: capJson.organization, // Default group to organization
             inputs: inputs,
             output: output,
             auth_type: authType,

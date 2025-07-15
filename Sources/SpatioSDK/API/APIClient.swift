@@ -212,14 +212,13 @@ public class APIClient {
         request: APIRequest,
         params: [String: String],
         organization: String,
-        group: String,
         capability: String
     ) async throws -> Data {
         return try await execute(
             request: request,
             params: params,
-            organization: group.isEmpty ? organization : group,
-            parentOrganization: group.isEmpty ? "" : organization,
+            organization: organization,
+            parentOrganization: organization,
             capability: capability
         )
     }

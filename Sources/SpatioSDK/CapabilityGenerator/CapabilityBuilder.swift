@@ -7,7 +7,6 @@ public class CapabilityBuilder {
     private var type: String = "local"
     private var entryPoint: String = ""
     private var organization: String = ""
-    private var group: String = ""
     private var inputs: [DarwinFunctionParameter] = []
     private var output: DarwinCapabilityOutput = DarwinCapabilityOutput(type: "string")
     private var baseUrl: String?
@@ -46,12 +45,6 @@ public class CapabilityBuilder {
     @discardableResult
     public func organization(_ organization: String) -> CapabilityBuilder {
         self.organization = organization
-        return self
-    }
-    
-    @discardableResult
-    public func group(_ group: String) -> CapabilityBuilder {
-        self.group = group
         return self
     }
     
@@ -226,16 +219,12 @@ public class CapabilityBuilder {
             throw CapabilityBuilderError.missingRequiredField("entryPoint")
         }
         
-        // Default group to organization if not specified
-        let finalGroup = group.isEmpty ? organization : group
-        
         return DarwinCapabilityMetadata(
             type: type,
             name: name,
             description: description,
             entry_point: entryPoint,
             organization: organization,
-            group: finalGroup,
             inputs: inputs,
             output: output,
             base_url: baseUrl,

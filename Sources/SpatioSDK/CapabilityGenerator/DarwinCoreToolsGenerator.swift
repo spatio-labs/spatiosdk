@@ -100,7 +100,6 @@ public class DarwinCoreToolsGenerator {
             description: "Read file contents with optional line offset and limit",
             entry_point: "darwin_read_file",
             organization: "darwin-ai-core",
-            group: "filesystem",
             inputs: [
                 DarwinFunctionParameter(
                     name: "file_path",
@@ -136,7 +135,6 @@ public class DarwinCoreToolsGenerator {
             description: "Write content to a file, creating it if it doesn't exist",
             entry_point: "darwin_write_file",
             organization: "darwin-ai-core",
-            group: "filesystem",
             inputs: [
                 DarwinFunctionParameter(
                     name: "file_path",
@@ -166,7 +164,6 @@ public class DarwinCoreToolsGenerator {
             description: "Make precise edits to existing files using find and replace",
             entry_point: "darwin_edit_file",
             organization: "darwin-ai-core",
-            group: "filesystem",
             inputs: [
                 DarwinFunctionParameter(
                     name: "file_path",
@@ -209,7 +206,6 @@ public class DarwinCoreToolsGenerator {
             description: "Make multiple edits to a single file in one operation",
             entry_point: "darwin_multi_edit_file",
             organization: "darwin-ai-core",
-            group: "filesystem",
             inputs: [
                 DarwinFunctionParameter(
                     name: "file_path",
@@ -239,7 +235,6 @@ public class DarwinCoreToolsGenerator {
             description: "Find files matching a glob pattern",
             entry_point: "darwin_glob",
             organization: "darwin-ai-core",
-            group: "filesystem",
             inputs: [
                 DarwinFunctionParameter(
                     name: "pattern",
@@ -269,7 +264,6 @@ public class DarwinCoreToolsGenerator {
             description: "Search file contents using regular expressions",
             entry_point: "darwin_grep",
             organization: "darwin-ai-core",
-            group: "filesystem",
             inputs: [
                 DarwinFunctionParameter(
                     name: "pattern",
@@ -305,7 +299,6 @@ public class DarwinCoreToolsGenerator {
             description: "List files and directories in a given path",
             entry_point: "darwin_ls",
             organization: "darwin-ai-core",
-            group: "filesystem",
             inputs: [
                 DarwinFunctionParameter(
                     name: "path",
@@ -344,7 +337,6 @@ public class DarwinCoreToolsGenerator {
             description: "Execute shell commands in a persistent session",
             entry_point: "darwin_bash",
             organization: "darwin-ai-core",
-            group: "execution",
             inputs: [
                 DarwinFunctionParameter(
                     name: "command",
@@ -381,7 +373,6 @@ public class DarwinCoreToolsGenerator {
             description: "Launch a specialized agent for complex searches and operations",
             entry_point: "darwin_task",
             organization: "darwin-ai-core",
-            group: "execution",
             inputs: [
                 DarwinFunctionParameter(
                     name: "description",
@@ -420,7 +411,6 @@ public class DarwinCoreToolsGenerator {
             description: "Create and manage a structured task list for tracking progress",
             entry_point: "darwin_todo_write",
             organization: "darwin-ai-core",
-            group: "planning",
             inputs: [
                 DarwinFunctionParameter(
                     name: "todos",
@@ -444,7 +434,6 @@ public class DarwinCoreToolsGenerator {
             description: "Transition from planning to execution mode",
             entry_point: "darwin_exit_plan_mode",
             organization: "darwin-ai-core",
-            group: "planning",
             inputs: [
                 DarwinFunctionParameter(
                     name: "plan",
@@ -477,7 +466,6 @@ public class DarwinCoreToolsGenerator {
             description: "Search the web and return formatted results",
             entry_point: "darwin_web_search",
             organization: "darwin-ai-core",
-            group: "information",
             inputs: [
                 DarwinFunctionParameter(
                     name: "query",
@@ -513,7 +501,6 @@ public class DarwinCoreToolsGenerator {
             description: "Fetch and analyze web content with AI processing",
             entry_point: "darwin_web_fetch",
             organization: "darwin-ai-core",
-            group: "information",
             inputs: [
                 DarwinFunctionParameter(
                     name: "url",

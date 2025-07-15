@@ -12,6 +12,12 @@ public enum PersistenceMode {
     /// - Purpose: For contributing capabilities to the global store
     /// - Requires: Local capabilities-store repository clone
     case remote(capabilitiesStorePath: String)
+    
+    /// Darwin AI native persistence
+    /// - Uses: ~/.darwin/store/installed.db with Darwin AI's exact schema
+    /// - Purpose: For creating core tools and native Darwin AI capabilities
+    /// - Compatible with Darwin AI's CapabilityStoreService
+    case darwin
 }
 
 extension PersistenceMode {
@@ -23,6 +29,8 @@ extension PersistenceMode {
             return validateLocalMode()
         case .remote(let path):
             return validateRemoteMode(path: path)
+        case .darwin:
+            return validateDarwinMode()
         }
     }
     
@@ -113,6 +121,41 @@ extension PersistenceMode {
         
         return ValidationResult(isValid: errors.isEmpty, errors: errors, warnings: warnings)
     }
+    
+    /// Validates Darwin AI native persistence mode
+    private func validateDarwinMode() -> ValidationResult {
+        let darwinStoreDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".darwin")
+            .appendingPathComponent("store")
+        
+        var errors: [String] = []
+        var warnings: [String] = []
+        
+        // Check if .darwin/store directory exists
+        if !FileManager.default.fileExists(atPath: darwinStoreDir.path) {
+            do {
+                try FileManager.default.createDirectory(
+                    at: darwinStoreDir,
+                    withIntermediateDirectories: true
+                )
+            } catch {
+                errors.append("Cannot create Darwin AI store directory: \(error.localizedDescription)")
+            }
+        }
+        
+        // Check write permissions
+        if !FileManager.default.isWritableFile(atPath: darwinStoreDir.path) {
+            errors.append("No write permission to Darwin AI store directory: \(darwinStoreDir.path)")
+        }
+        
+        // Check if installed.db exists or can be created
+        let dbPath = darwinStoreDir.appendingPathComponent("installed.db")
+        if !FileManager.default.fileExists(atPath: dbPath.path) {
+            warnings.append("Darwin AI database does not exist yet at: \(dbPath.path)")
+        }
+        
+        return ValidationResult(isValid: errors.isEmpty, errors: errors, warnings: warnings)
+    }
 }
 
 extension PersistenceMode: CustomStringConvertible {
@@ -122,6 +165,8 @@ extension PersistenceMode: CustomStringConvertible {
             return "Local (~/.darwin/store/)"
         case .remote(let path):
             return "Remote (\(path))"
+        case .darwin:
+            return "Darwin AI Native (~/.darwin/store/installed.db)"
         }
     }
 }
@@ -133,6 +178,8 @@ extension PersistenceMode: Equatable {
             return true
         case (.remote(let path1), .remote(let path2)):
             return path1 == path2
+        case (.darwin, .darwin):
+            return true
         default:
             return false
         }

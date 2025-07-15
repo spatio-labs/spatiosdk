@@ -36,6 +36,11 @@ public protocol PersistenceLayer {
     /// - Throws: PersistenceError if listing fails
     func listCapabilities(for organizationId: String) throws -> [DarwinCapabilityMetadata]
     
+    /// List all installed capabilities across all organizations
+    /// - Returns: Array of installed capability data
+    /// - Throws: PersistenceError if listing fails
+    func listInstalledCapabilities() throws -> [DarwinCapabilityMetadata]
+    
     /// Remove an organization and all its capabilities
     /// - Parameter organizationId: The organization ID to remove
     /// - Throws: PersistenceError if removal fails
@@ -132,6 +137,8 @@ public struct PersistenceLayerFactory {
             return try LocalPersistenceLayer()
         case .remote(let path):
             return try RemotePersistenceLayer(capabilitiesStorePath: path)
+        case .darwin:
+            return try DarwinPersistenceLayer()
         }
     }
 }

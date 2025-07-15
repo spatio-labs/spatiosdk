@@ -46,40 +46,6 @@ public struct LocalOrganizationData: Codable, Identifiable {
     }
 }
 
-// MARK: - Group Models
-
-/// Local group data structure for installed.db
-public struct LocalGroupData: Codable, Identifiable {
-    public let id: String
-    public let organizationId: String
-    public let name: String
-    public let description: String?
-    public let logoUrl: String?
-    public let createdAt: Int64
-    public let updatedAt: Int64
-    public let metadataJson: String?
-    
-    public init(
-        id: String,
-        organizationId: String,
-        name: String,
-        description: String? = nil,
-        logoUrl: String? = nil,
-        createdAt: Int64 = Int64(Date().timeIntervalSince1970),
-        updatedAt: Int64 = Int64(Date().timeIntervalSince1970),
-        metadataJson: String? = nil
-    ) {
-        self.id = id
-        self.organizationId = organizationId
-        self.name = name
-        self.description = description
-        self.logoUrl = logoUrl
-        self.createdAt = createdAt
-        self.updatedAt = updatedAt
-        self.metadataJson = metadataJson
-    }
-}
-
 // MARK: - Capability Models
 
 /// Local capability data structure for installed.db
@@ -87,7 +53,6 @@ public struct LocalCapabilityData: Codable, Identifiable {
     public let id: String
     public let name: String
     public let organizationId: String
-    public let groupId: String?
     public let description: String?
     public let type: String
     public let entryPoint: String?
@@ -107,7 +72,6 @@ public struct LocalCapabilityData: Codable, Identifiable {
         id: String,
         name: String,
         organizationId: String,
-        groupId: String? = nil,
         description: String? = nil,
         type: String,
         entryPoint: String? = nil,
@@ -126,7 +90,6 @@ public struct LocalCapabilityData: Codable, Identifiable {
         self.id = id
         self.name = name
         self.organizationId = organizationId
-        self.groupId = groupId
         self.description = description
         self.type = type
         self.entryPoint = entryPoint
@@ -247,6 +210,7 @@ extension LocalOrganizationData {
 extension DarwinOrganizationData {
     /// Convert to local organization format
     func toLocalOrganizationData(isInstalled: Bool = true, isLocalOnly: Bool = false) -> LocalOrganizationData {
+        let now = Int64(Date().timeIntervalSince1970)
         return LocalOrganizationData(
             id: id,
             name: name,
@@ -254,7 +218,9 @@ extension DarwinOrganizationData {
             logoUrl: logo ?? pngLogo ?? svgLogo,
             isInstalled: isInstalled,
             isLocalOnly: isLocalOnly,
-            metadataJson: try? String(data: JSONEncoder().encode(self), encoding: .utf8),
+            createdAt: now,
+            updatedAt: now,
+            metadataJson: nil, // Skip metadata serialization to avoid JSON errors
             tags: tags?.joined(separator: ",")
         )
     }
@@ -272,7 +238,6 @@ extension LocalCapabilityData {
             description: description ?? "",
             entry_point: entryPoint ?? "",
             organization: organizationId,
-            group: groupId ?? organizationId,
             inputs: inputs,
             output: output,
             auth_type: .none
@@ -295,10 +260,9 @@ extension DarwinCapabilityMetadata {
         isEnabled: Bool = true
     ) -> LocalCapabilityData {
         return LocalCapabilityData(
-            id: UUID().uuidString,
+            id: "\(organization).\(name)",
             name: name,
             organizationId: organization,
-            groupId: group != organization ? group : nil,
             description: description,
             type: type,
             entryPoint: entry_point,

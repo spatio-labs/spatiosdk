@@ -69,7 +69,7 @@ struct AuthenticationTests {
         AuthManager.shared.setAuthConfig(for: "testorg", config: basicAuth)
         
         // Verify config is retrievable
-        let retrievedConfig = AuthManager.shared.getAuthConfig(for: "testorg", group: "testgroup", capability: "testcap")
+        let retrievedConfig = AuthManager.shared.getAuthConfig(for: "testorg", capability: "testcap")
         #expect(retrievedConfig != nil)
         #expect(retrievedConfig?.type == .basic)
         #expect(retrievedConfig?.parameterName == "Authorization")
@@ -87,12 +87,12 @@ struct AuthenticationTests {
             envVariable: "ORG_API_KEY"
         )
         
-        let groupAuth = AuthConfig(
+        let childOrgAuth = AuthConfig(
             type: .oauth2,
             parameterName: "Authorization",
             location: .header,
             valuePrefix: "Bearer ",
-            envVariable: "GROUP_OAUTH_TOKEN"
+            envVariable: "CHILD_ORG_OAUTH_TOKEN"
         )
         
         let capabilityAuth = AuthConfig(
@@ -105,19 +105,19 @@ struct AuthenticationTests {
         
         // Set configs at different levels
         AuthManager.shared.setAuthConfig(for: "override-org", config: orgAuth)
-        AuthManager.shared.setAuthConfig(for: "override-org", group: "override-group", config: groupAuth)
-        AuthManager.shared.setAuthConfig(for: "override-org", group: "override-group", capability: "override-cap", config: capabilityAuth)
+        AuthManager.shared.setAuthConfig(for: "child-org", parentOrganization: "override-org", config: childOrgAuth)
+        AuthManager.shared.setAuthConfig(for: "child-org", capability: "override-cap", config: capabilityAuth)
         
         // Test that the most specific config is returned
-        let capConfig = AuthManager.shared.getAuthConfig(for: "override-org", group: "override-group", capability: "override-cap")
+        let capConfig = AuthManager.shared.getAuthConfig(for: "child-org", parentOrganization: "override-org", capability: "override-cap")
         #expect(capConfig?.type == .basic)
         
-        // Test that group config is returned when no capability config exists
-        let groupConfig = AuthManager.shared.getAuthConfig(for: "override-org", group: "override-group", capability: "other-cap")
-        #expect(groupConfig?.type == .oauth2)
+        // Test that child org config is returned when no capability config exists
+        let childOrgConfig = AuthManager.shared.getAuthConfig(for: "child-org", parentOrganization: "override-org", capability: "other-cap")
+        #expect(childOrgConfig?.type == .oauth2)
         
-        // Test that org config is returned when no group or capability config exists
-        let orgConfig = AuthManager.shared.getAuthConfig(for: "override-org", group: "other-group", capability: "other-cap")
+        // Test that org config is returned when no child org or capability config exists
+        let orgConfig = AuthManager.shared.getAuthConfig(for: "override-org", capability: "other-cap")
         #expect(orgConfig?.type == .apiKey)
     }
 }
@@ -182,7 +182,7 @@ struct MockDataTests {
             }
         }
         
-        let capability = TestCapability(organization: "test", group: "test", capability: "test")
+        let capability = TestCapability(organization: "test", capability: "test")
         let mockData = capability.provideMockData(for: ["q": "test"])
         
         #expect(mockData.contains("mock"))
@@ -207,12 +207,10 @@ struct CapabilityTests {
         
         let capability = TestCapability(
             organization: "test-org",
-            group: "test-group",
             capability: "test-capability"
         )
         
         #expect(capability.organization == "test-org")
-        #expect(capability.group == "test-group")
         #expect(capability.capability == "test-capability")
         #expect(capability.request.baseURL == "https://api.example.com")
         #expect(capability.request.endpoint == "/test")

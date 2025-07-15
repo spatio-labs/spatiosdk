@@ -10,7 +10,6 @@ public struct DarwinCapabilityMetadata: Codable {
     public let description: String
     public let entry_point: String
     public let organization: String
-    public let group: String
     public let inputs: [DarwinFunctionParameter]
     public let output: DarwinCapabilityOutput
     public let base_url: String?
@@ -24,7 +23,6 @@ public struct DarwinCapabilityMetadata: Codable {
         description: String,
         entry_point: String,
         organization: String,
-        group: String,
         inputs: [DarwinFunctionParameter],
         output: DarwinCapabilityOutput,
         base_url: String? = nil,
@@ -37,7 +35,6 @@ public struct DarwinCapabilityMetadata: Codable {
         self.description = description
         self.entry_point = entry_point
         self.organization = organization
-        self.group = group
         self.inputs = inputs
         self.output = output
         self.base_url = base_url

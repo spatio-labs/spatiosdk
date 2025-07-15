@@ -84,7 +84,6 @@ extension InstalledCapability {
             description: self.description,
             entry_point: entry_point,
             organization: self.organization,
-            group: group,
             inputs: inputs,
             output: output,
             base_url: base_url,

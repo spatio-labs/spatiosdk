@@ -149,7 +149,7 @@ public class RemotePersistenceLayer: PersistenceLayer {
             // Build SQL to find capabilities that belong to any of the valid organization IDs
             let placeholders = validOrgIds.map { _ in "?" }.joined(separator: ", ")
             let sql = """
-                SELECT id, name, title, description, logo, organization_id, group_id, group_name,
+                SELECT id, name, title, description, logo, organization_id,
                        items, api_schema, auth_flow, examples, relationships, path, url, tags, categories, entry_point, type, created_at
                 FROM capabilities
                 WHERE organization_id IN (\(placeholders))
@@ -157,6 +157,24 @@ public class RemotePersistenceLayer: PersistenceLayer {
             """
             
             let capabilities = try executeQuery(sql: sql, parameters: validOrgIds) { stmt in
+                return parseCapabilityFromStatement(stmt)
+            }
+            
+            return capabilities.map { $0.toDarwinCapabilityMetadata() }
+        }
+    }
+    
+    public func listInstalledCapabilities() throws -> [DarwinCapabilityMetadata] {
+        return try withConnection { db in
+            let sql = """
+                SELECT c.id, c.name, c.title, c.description, c.logo, c.organization_id,
+                       c.items, c.api_schema, c.auth_flow, c.examples, c.relationships, c.path, c.url, c.tags, c.categories, c.entry_point, c.type, c.created_at
+                FROM capabilities c
+                INNER JOIN installations i ON c.id = i.capability_id
+                ORDER BY c.organization_id, c.name
+            """
+            
+            let capabilities = try executeQuery(sql: sql, parameters: []) { stmt in
                 return parseCapabilityFromStatement(stmt)
             }
             
@@ -450,20 +468,18 @@ public class RemotePersistenceLayer: PersistenceLayer {
             description: String(cString: sqlite3_column_text(stmt, 3)),
             logo: sqlite3_column_text(stmt, 4) != nil ? String(cString: sqlite3_column_text(stmt, 4)) : nil,
             organizationId: String(cString: sqlite3_column_text(stmt, 5)),
-            groupId: sqlite3_column_text(stmt, 6) != nil ? String(cString: sqlite3_column_text(stmt, 6)) : nil,
-            groupName: String(cString: sqlite3_column_text(stmt, 7)),
-            items: parseJSONArray(UnsafeRawPointer(sqlite3_column_text(stmt, 8))?.assumingMemoryBound(to: CChar.self)),
-            apiSchema: parseAPISchema(UnsafeRawPointer(sqlite3_column_text(stmt, 9))?.assumingMemoryBound(to: CChar.self)),
-            authFlow: sqlite3_column_text(stmt, 10) != nil ? String(cString: sqlite3_column_text(stmt, 10)) : nil,
-            examples: parseJSONArray(UnsafeRawPointer(sqlite3_column_text(stmt, 11))?.assumingMemoryBound(to: CChar.self)),
-            relationships: parseJSONArray(UnsafeRawPointer(sqlite3_column_text(stmt, 12))?.assumingMemoryBound(to: CChar.self)),
-            path: String(cString: sqlite3_column_text(stmt, 13)),
-            url: String(cString: sqlite3_column_text(stmt, 14)),
-            tags: parseJSONArray(UnsafeRawPointer(sqlite3_column_text(stmt, 15))?.assumingMemoryBound(to: CChar.self)),
-            categories: parseJSONArray(UnsafeRawPointer(sqlite3_column_text(stmt, 16))?.assumingMemoryBound(to: CChar.self)),
-            entryPoint: String(cString: sqlite3_column_text(stmt, 17)),
-            type: String(cString: sqlite3_column_text(stmt, 18)),
-            createdAt: parseDate(UnsafeRawPointer(sqlite3_column_text(stmt, 19))?.assumingMemoryBound(to: CChar.self))
+            items: parseJSONArray(UnsafeRawPointer(sqlite3_column_text(stmt, 6))?.assumingMemoryBound(to: CChar.self)),
+            apiSchema: parseAPISchema(UnsafeRawPointer(sqlite3_column_text(stmt, 7))?.assumingMemoryBound(to: CChar.self)),
+            authFlow: sqlite3_column_text(stmt, 8) != nil ? String(cString: sqlite3_column_text(stmt, 8)) : nil,
+            examples: parseJSONArray(UnsafeRawPointer(sqlite3_column_text(stmt, 9))?.assumingMemoryBound(to: CChar.self)),
+            relationships: parseJSONArray(UnsafeRawPointer(sqlite3_column_text(stmt, 10))?.assumingMemoryBound(to: CChar.self)),
+            path: String(cString: sqlite3_column_text(stmt, 11)),
+            url: String(cString: sqlite3_column_text(stmt, 12)),
+            tags: parseJSONArray(UnsafeRawPointer(sqlite3_column_text(stmt, 13))?.assumingMemoryBound(to: CChar.self)),
+            categories: parseJSONArray(UnsafeRawPointer(sqlite3_column_text(stmt, 14))?.assumingMemoryBound(to: CChar.self)),
+            entryPoint: String(cString: sqlite3_column_text(stmt, 15)),
+            type: String(cString: sqlite3_column_text(stmt, 16)),
+            createdAt: parseDate(UnsafeRawPointer(sqlite3_column_text(stmt, 17))?.assumingMemoryBound(to: CChar.self))
         )
     }
     
@@ -558,8 +574,6 @@ struct RemoteCapability {
     let description: String
     let logo: String?
     let organizationId: String
-    let groupId: String?
-    let groupName: String
     let items: [String]
     let apiSchema: RemoteAPISchema?
     let authFlow: String?
@@ -583,7 +597,6 @@ struct RemoteCapability {
             description: description,
             entry_point: entryPoint,
             organization: organizationId,
-            group: groupId ?? groupName,
             inputs: inputs,
             output: output,
             auth_type: .none

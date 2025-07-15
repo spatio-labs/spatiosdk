@@ -46,7 +46,6 @@ public class CapabilityCacheManager {
                     id: generateCapabilityId(from: capability.name),
                     name: capability.name,
                     organization: capability.organization,
-                    group: capability.group,
                     description: capability.description,
                     type: capability.type,
                     entryPoint: capability.entry_point,
@@ -73,7 +72,6 @@ public class CapabilityCacheManager {
                     name: capability.name,
                     description: capability.description,
                     organization: capability.organization,
-                    group: capability.group,
                     categories: [], // TODO: Add categories support
                     tags: [], // TODO: Add tags support
                     searchTerms: generateSearchTerms(for: capability)
@@ -138,7 +136,6 @@ public class CapabilityCacheManager {
                     id: generateCapabilityId(from: capability.name),
                     name: capability.name,
                     organization: capability.organization,
-                    group: capability.group,
                     description: capability.description,
                     type: capability.type,
                     isInstalled: true, // All capabilities in this context are installed
@@ -253,8 +250,8 @@ public class CapabilityCacheManager {
     }
     
     private func getAllInstalledCapabilities() throws -> [DarwinCapabilityMetadata] {
-        // Since we're using PersistenceLayer, all capabilities are considered installed
-        return try getAllCapabilities()
+        // Use the new method that properly queries the installations table
+        return try persistenceLayer.listInstalledCapabilities()
     }
     
     private func getCapabilityCount(for organizationId: String) -> Int {
@@ -285,9 +282,8 @@ public class CapabilityCacheManager {
         // Add description words
         terms.append(contentsOf: capability.description.components(separatedBy: .whitespacesAndNewlines))
         
-        // Add organization and group
+        // Add organization
         terms.append(capability.organization)
-        terms.append(capability.group)
         
         // Add type
         terms.append(capability.type)
@@ -314,7 +310,6 @@ public struct InstalledCapabilityItem: Codable {
     public let id: String
     public let name: String
     public let organization: String
-    public let group: String?
     public let description: String
     public let type: String
     public let entryPoint: String?
@@ -334,7 +329,6 @@ public struct SearchIndexItem: Codable {
     public let name: String
     public let description: String
     public let organization: String
-    public let group: String?
     public let categories: [String]
     public let tags: [String]
     public let searchTerms: [String]
@@ -385,7 +379,6 @@ public struct CachedCapabilityMetadata: Codable {
     public let id: String
     public let name: String
     public let organization: String
-    public let group: String?
     public let description: String
     public let type: String
     public let isInstalled: Bool

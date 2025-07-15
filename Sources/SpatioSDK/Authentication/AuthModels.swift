@@ -130,12 +130,6 @@ public class AuthManager {
         return nil
     }
     
-    /// For backward compatibility
-    public func getAuthConfig(for organization: String, group: String, capability: String) -> AuthConfig? {
-        return getAuthConfig(for: group.isEmpty ? organization : group, 
-                            parentOrganization: group.isEmpty ? "" : organization, 
-                            capability: capability)
-    }
     
     /// Gets auth token using the appropriate configuration
     public func getAuthToken(for organization: String, parentOrganization: String = "", capability: String) throws -> (name: String, value: String, location: AuthLocation) {
@@ -153,10 +147,4 @@ public class AuthManager {
         return (name: config.parameterName, value: authValue, location: config.location)
     }
     
-    /// For backward compatibility
-    public func getAuthToken(for organization: String, group: String, capability: String) throws -> (name: String, value: String, location: AuthLocation) {
-        return try getAuthToken(for: group.isEmpty ? organization : group, 
-                              parentOrganization: group.isEmpty ? "" : organization, 
-                              capability: capability)
-    }
 } 

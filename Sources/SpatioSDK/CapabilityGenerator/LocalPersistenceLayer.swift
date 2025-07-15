@@ -41,7 +41,6 @@ public class LocalPersistenceLayer: PersistenceLayer {
     // MARK: - Table Definitions
     
     private let organizations = Table("organizations")
-    private let groups = Table("groups")
     private let capabilities = Table("capabilities")
     private let capabilityParameters = Table("capability_parameters")
     private let installations = Table("installations")
@@ -60,35 +59,27 @@ public class LocalPersistenceLayer: PersistenceLayer {
     private let orgUpdatedAt = Expression<Int64>("updated_at")
     private let orgMetadataJson = Expression<String?>("metadata_json")
     
-    // Groups columns
-    private let groupId = Expression<String>("id")
-    private let groupOrgId = Expression<String>("organization_id")
-    private let groupName = Expression<String>("name")
-    private let groupDescription = Expression<String?>("description")
-    private let groupLogoUrl = Expression<String?>("logo_url")
-    private let groupCreatedAt = Expression<Int64>("created_at")
-    private let groupUpdatedAt = Expression<Int64>("updated_at")
-    private let groupMetadataJson = Expression<String?>("metadata_json")
-    
     // Capabilities columns
     private let capId = Expression<String>("id")
     private let capName = Expression<String>("name")
     private let capOrgId = Expression<String>("organization_id")
-    private let capGroupId = Expression<String?>("group_id")
     private let capDescription = Expression<String?>("description")
     private let capType = Expression<String>("type")
     private let capEntryPoint = Expression<String?>("entry_point")
-    private let capFilePath = Expression<String>("file_path")
-    private let capLogoUrl = Expression<String?>("logo_url")
-    private let capIsInstalled = Expression<Bool>("is_installed")
-    private let capIsEnabled = Expression<Bool>("is_enabled")
-    private let capVersion = Expression<String?>("version")
-    private let capCreatedAt = Expression<Int64>("created_at")
-    private let capUpdatedAt = Expression<Int64>("updated_at")
-    private let capLastExecutedAt = Expression<Int64?>("last_executed_at")
-    private let capExecutionCount = Expression<Int64>("execution_count")
-    private let capTags = Expression<String?>("tags")
-    private let capMetadataJson = Expression<String?>("metadata_json")
+    private let capFilePath = Expression<String>("path")
+    // Columns that don't exist in the actual database are commented out
+    // private let capLogoUrl = Expression<String?>("logo_url")
+    // private let capIsInstalled = Expression<Bool>("is_installed")
+    // private let capVersion = Expression<String?>("version")
+    // private let capCreatedAt = Expression<Int64>("created_at")
+    // private let capLastExecutedAt = Expression<Int64?>("last_executed_at")
+    // private let capExecutionCount = Expression<Int64>("execution_count")
+    // private let capTags = Expression<String?>("tags")
+    // private let capMetadataJson = Expression<String?>("metadata_json")
+    private let capInstalledAt = Expression<String?>("installed_at")
+    private let capInputs = Expression<String?>("inputs")
+    private let capOutputs = Expression<String?>("outputs")
+    private let capAuthType = Expression<String?>("auth_type")
     
     // Parameters columns
     private let paramId = Expression<Int64>("id")
@@ -226,27 +217,19 @@ public class LocalPersistenceLayer: PersistenceLayer {
                 capId <- localCap.id,
                 capName <- localCap.name,
                 capOrgId <- localCap.organizationId,
-                capGroupId <- localCap.groupId,
                 capDescription <- localCap.description,
                 capType <- localCap.type,
                 capEntryPoint <- localCap.entryPoint,
                 capFilePath <- localCap.filePath,
-                capLogoUrl <- localCap.logoUrl,
-                capIsInstalled <- localCap.isInstalled,
-                capIsEnabled <- localCap.isEnabled,
-                capVersion <- localCap.version,
-                capCreatedAt <- localCap.createdAt,
-                capUpdatedAt <- localCap.updatedAt,
-                capLastExecutedAt <- localCap.lastExecutedAt,
-                capExecutionCount <- localCap.executionCount,
-                capTags <- localCap.tags,
-                capMetadataJson <- localCap.metadataJson
+                capInputs <- nil,  // TODO: Serialize inputs
+                capOutputs <- nil,  // TODO: Serialize outputs
+                capAuthType <- capability.auth_type.rawValue
             ))
             
             // Record installation
             try db.run(installations.insert(or: .replace,
                 instCapId <- localCap.id,
-                instInstalledAt <- localCap.createdAt,
+                instInstalledAt <- Int64(Date().timeIntervalSince1970),
                 instSource <- "spatiosdk"
             ))
             
@@ -278,7 +261,6 @@ public class LocalPersistenceLayer: PersistenceLayer {
                     isInstalled: row[orgIsInstalled],
                     isLocalOnly: row[orgIsLocalOnly],
                     createdAt: row[orgCreatedAt],
-                    updatedAt: row[orgUpdatedAt],
                     metadataJson: row[orgMetadataJson]
                 )
                 return localOrg.toDarwinOrganizationData()
@@ -294,7 +276,10 @@ public class LocalPersistenceLayer: PersistenceLayer {
         }
         
         do {
-            let query = capabilities.filter(capOrgId == organizationId && capIsInstalled == true)
+            // Check if capability is installed by checking installations table
+            let query = capabilities
+                .join(installations, on: capabilities[capId] == installations[instCapId])
+                .filter(capOrgId == organizationId)
             let rows = try db.prepare(query)
             
             return try rows.map { row in
@@ -302,6 +287,26 @@ public class LocalPersistenceLayer: PersistenceLayer {
             }
         } catch {
             throw PersistenceError.databaseError("Failed to list capabilities: \(error)")
+        }
+    }
+    
+    public func listInstalledCapabilities() throws -> [DarwinCapabilityMetadata] {
+        guard let db = database else {
+            throw PersistenceError.databaseError("Database not initialized")
+        }
+        
+        do {
+            // Query capabilities that have an entry in the installations table
+            let query = capabilities
+                .join(installations, on: capabilities[capId] == installations[instCapId])
+            
+            let rows = try db.prepare(query)
+            
+            return try rows.map { row in
+                try parseCapabilityMetadata(from: row)
+            }
+        } catch {
+            throw PersistenceError.databaseError("Failed to list installed capabilities: \(error)")
         }
     }
     
@@ -469,41 +474,29 @@ public class LocalPersistenceLayer: PersistenceLayer {
             table.column(orgMetadataJson)
         })
         
-        // Groups table
-        try db.run(groups.create(ifNotExists: true) { table in
-            table.column(groupId, primaryKey: true)
-            table.column(groupOrgId)
-            table.column(groupName)
-            table.column(groupDescription)
-            table.column(groupLogoUrl)
-            table.column(groupCreatedAt)
-            table.column(groupUpdatedAt)
-            table.column(groupMetadataJson)
-            table.foreignKey(groupOrgId, references: organizations, orgId, delete: .cascade)
-        })
-        
         // Capabilities table
         try db.run(capabilities.create(ifNotExists: true) { table in
             table.column(capId, primaryKey: true)
             table.column(capName)
             table.column(capOrgId)
-            table.column(capGroupId)
             table.column(capDescription)
             table.column(capType)
             table.column(capEntryPoint)
             table.column(capFilePath)
-            table.column(capLogoUrl)
-            table.column(capIsInstalled, defaultValue: false)
-            table.column(capIsEnabled, defaultValue: true)
-            table.column(capVersion)
-            table.column(capCreatedAt)
-            table.column(capUpdatedAt)
-            table.column(capLastExecutedAt)
-            table.column(capExecutionCount, defaultValue: 0)
-            table.column(capTags)
-            table.column(capMetadataJson)
+            // Columns that don't exist in actual database are commented out
+            // table.column(capLogoUrl)
+            // table.column(capIsInstalled, defaultValue: false)
+            // table.column(capVersion)
+            // table.column(capCreatedAt)
+            // table.column(capLastExecutedAt)
+            // table.column(capExecutionCount, defaultValue: 0)
+            // table.column(capTags)
+            // table.column(capMetadataJson)
+            table.column(capInputs)
+            table.column(capOutputs)
+            table.column(capAuthType)
+            table.column(capInstalledAt)
             table.foreignKey(capOrgId, references: organizations, orgId, delete: .cascade)
-            table.foreignKey(capGroupId, references: groups, groupId, delete: .setNull)
         })
         
         // Parameters table
@@ -544,25 +537,14 @@ public class LocalPersistenceLayer: PersistenceLayer {
         guard let db = database else { return }
         
         // Performance indexes
-        try db.run("CREATE INDEX IF NOT EXISTS idx_capabilities_org_group ON capabilities(organization_id, group_id)")
-        try db.run("CREATE INDEX IF NOT EXISTS idx_capabilities_installed ON capabilities(is_installed)")
-        try db.run("CREATE INDEX IF NOT EXISTS idx_capabilities_enabled ON capabilities(is_enabled)")
+        try db.run("CREATE INDEX IF NOT EXISTS idx_capabilities_org ON capabilities(organization_id)")
         try db.run("CREATE INDEX IF NOT EXISTS idx_capabilities_type ON capabilities(type)")
-        try db.run("CREATE INDEX IF NOT EXISTS idx_capabilities_updated ON capabilities(updated_at)")
         try db.run("CREATE INDEX IF NOT EXISTS idx_usage_capability_time ON capability_usage(capability_id, executed_at)")
         try db.run("CREATE INDEX IF NOT EXISTS idx_parameters_capability ON capability_parameters(capability_id)")
-        try db.run("CREATE INDEX IF NOT EXISTS idx_groups_org ON groups(organization_id)")
     }
     
     private func parseCapabilityMetadata(from row: Row) throws -> DarwinCapabilityMetadata {
-        // Try to parse from stored JSON metadata first
-        if let metadataJson = row[capMetadataJson],
-           let data = metadataJson.data(using: .utf8),
-           let metadata = try? jsonDecoder.decode(DarwinCapabilityMetadata.self, from: data) {
-            return metadata
-        }
-        
-        // Fallback: construct from individual columns
+        // Construct from individual columns
         let inputs: [DarwinFunctionParameter] = [] // TODO: Parse from parameters table
         let output = DarwinCapabilityOutput(type: "string", description: "Capability output")
         
@@ -572,7 +554,6 @@ public class LocalPersistenceLayer: PersistenceLayer {
             description: row[capDescription] ?? "",
             entry_point: row[capEntryPoint] ?? "",
             organization: row[capOrgId],
-            group: row[capGroupId] ?? row[capOrgId],
             inputs: inputs,
             output: output,
             auth_type: .none
